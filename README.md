@@ -57,6 +57,24 @@ Once a database has been compiled, you can generate articles using a single comm
 python winnie.py generate MY_DATABASE
 ```
 
+### Example
+
+Title:
+```
+China's Hong Kong Airlines risks having license revoked as body parts found
+```
+
+Body:
+```
+China's so-called "state TV" will divide many Chinese today, experts have said. 
+
+In terms of comprehensive national strength, technology, and many other rights of the trainees and to negate the legitimacy of the Afghan civilian casualties have been reported. Among the athletes, 138 have previous Olympics experience, accounting for 32.02 percent of the cotton and textile industries. Some also worried that Japan is no longer heavily relying on US social media app Musical.ly, which it then merged into TikTok.
+
+In the South China Sea amid her roadshow in Singapore. No matter what the motivation for the US to correct its mistakes, control divergence, and push for higher-level development of Germany-China relations, which is already reporting a profit only five years later, Yu bought a second car, a Tiguan, a Volkswagen SUV.
+
+...
+```
+
 ## Possibilities
 * It would be cool to produce a proxy website that takes the homepage and/or article pages from the Global Times website, and replaces the content with generated data from this program. It would also be possible to 'tag' phrases and image captions as they are compiled. This would allow images to be selected and used on article pages.
 * As sentences are generated independently, they don't track context or meaning. It would be a great idea to tag nouns/verbs/topics (using spaCy or similar) and use that information when generating sentences.
