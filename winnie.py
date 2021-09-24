@@ -36,11 +36,14 @@ Global regular expressions for various operations.
 RE_VALID_HTML_FILE = re.compile(r".*\.s?html?")
 RE_PARAGRAPH_SPLIT = re.compile(r"\s*\n\s*\n\s*")
 RE_PHRASE_SPLIT = re.compile(r"(?<=[^A-Z].[.?]) +(?=[A-Z])")
-RE_HTML_TO_REMOVE = [
+RE_HTML_TO_REMOVE = (
 	re.compile(r"<p\s*[^>]*style\s*=.*</p>", re.MULTILINE | re.IGNORECASE),
 	re.compile(r"<br>\s*Global Times\s*<br>", re.IGNORECASE),
 	re.compile(r"[‹|›]")
-]
+)
+RE_TEXT_TO_REMOVE = (
+	re.compile(r"\b\\\-\b"),
+)
 
 """
 Utility class to hide writes to stdout.
@@ -302,6 +305,15 @@ def clean_html(html):
 	return html
 
 """
+Clean up extracted words.
+"""
+def clean_text(text):
+	for regex in RE_TEXT_TO_REMOVE:
+		text = regex.sub("", text)
+
+	return text
+
+"""
 Match requested keywords against article keywords to determine if a match is found or not.
 """
 def match_keywords(keywords, article_keywords):
@@ -380,8 +392,8 @@ def compile(args):
 					if not body:
 						continue
 
-					title_text = converter.handle(title.get()).strip()
-					body_text = converter.handle(clean_html(body.get())).strip()
+					title_text = clean_text(converter.handle(clean_html(title.get()))).strip()
+					body_text = clean_text(converter.handle(clean_html(body.get()))).strip()
 					keywords = {}
 
 					if not body_text:
