@@ -35,7 +35,7 @@ Global regular expressions for various operations.
 """
 RE_VALID_HTML_FILE = re.compile(r".*\.s?html?")
 RE_PARAGRAPH_SPLIT = re.compile(r"\s*\n\s*\n\s*")
-RE_PHRASE_SPLIT = re.compile(r"(?<=[^A-Z].[.?]) +(?=[A-Z])")
+RE_PHRASE_SPLIT = re.compile(r"(?<=[^A-Z].[.?!]) +(?=[A-Z])")
 RE_HTML_TO_REMOVE = (
 	re.compile(r"<p\s*[^>]*style\s*=.*</p>", re.IGNORECASE),
 	re.compile(r"<br>\s*Global Times\s*<br>", re.IGNORECASE),
@@ -312,6 +312,8 @@ def clean_text(text):
 	for regex in RE_TEXT_TO_REMOVE:
 		text = regex.sub("", text)
 
+	text = text.replace("“", "\"")
+
 	return text
 
 """
@@ -486,7 +488,6 @@ def generate(args):
 	print("\u262D " * math.ceil(len(title) / 2))
 	print(title)
 	print("\u262D " * math.ceil(len(title) / 2))
-	print()
 	print()
 
 	for paragraph in paragraphs[: -1]:
