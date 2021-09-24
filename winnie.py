@@ -37,12 +37,13 @@ RE_VALID_HTML_FILE = re.compile(r".*\.s?html?")
 RE_PARAGRAPH_SPLIT = re.compile(r"\s*\n\s*\n\s*")
 RE_PHRASE_SPLIT = re.compile(r"(?<=[^A-Z].[.?]) +(?=[A-Z])")
 RE_HTML_TO_REMOVE = (
-	re.compile(r"<p\s*[^>]*style\s*=.*</p>", re.MULTILINE | re.IGNORECASE),
+	re.compile(r"<p\s*[^>]*style\s*=.*</p>", re.IGNORECASE),
 	re.compile(r"<br>\s*Global Times\s*<br>", re.IGNORECASE),
 	re.compile(r"[‹|›]")
 )
 RE_TEXT_TO_REMOVE = (
-	re.compile(r"\b\\\-\b"),
+	re.compile(r"\\"),
+	re.compile(r"^ *\-\s*", re.MULTILINE)
 )
 
 """
