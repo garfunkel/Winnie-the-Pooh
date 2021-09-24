@@ -40,25 +40,54 @@ wget \
 Let that command run for a few hours. It's best if you hammer their website as hard as you can, obviously. ;)
 
 ### Compiling a Database
+```
+usage: winnie.py compile [-h] [-k] [-g] dir db
+
+positional arguments:
+  dir                   website HTML directory to compile
+  db                    output name of database
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -k, --keyword-extraction
+                        use spaCy NLP to identify keywords when compiling database
+  -g, --prefer-gpu      prefer GPU (if available) when generating keywords
+```
+
 Once article files have been downloaded, you can compile a database using the following command:
 ```
 python winnie.py compile MY_DOWNLOAD_DIR MY_DATABASE
 ```
 
-When compiling your database, you may also specify the `state-size`. This value is used to determine the size of Markov chain nodes. Generally speaking, the higher the number the more 'accurate' generated content will be, however creativity will be reduced. A good value for `state-size` is around 2-3. 3 is the default. Setting a high value can also result in slower article generation. You can set your own `state-size` using:
-```
-python winnie.py compile -s MY_STATE_SIZE MY_DOWNLOAD_DIR MY_DATABASE
-
-```
+Winnie-the-Pooh supports keyword extraction via the spaCy NLP library. This allows us to extract keywords/topics from articles, and then use this information to generate more relevant articles. This process can be extremely slow and can take hours when compiling a very large database. You can enmable keyword extraction with the `-k, --keyword-extraction` argument. Keyword extraction can also be performed on some types of GPUs, speeding up the process dramatically. If you would like to use the GPU (if available and supported), you can do so with the `-g, --prefer-gpu` argument.
 
 ### Generating Articles
-Once a database has been compiled, you can generate articles using a single command. It's important to note that this may take some time - especially if your compiled database uses a higher `state-size` value.
+```
+usage: winnie.py generate [-h] [-st title-state-size] [-sb body-state-size] [-k [KEYWORDS ...]] [db]
+
+positional arguments:
+  db                    database to use for generation (default: default)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -st title-state-size, --title_state_size title-state-size
+                        chain state size for article titles (defualt: 2)
+  -sb body-state-size, --body_state_size body-state-size
+                        chain state size for article bodies (defualt: 3)
+  -k [KEYWORDS ...], --keywords [KEYWORDS ...]
+                        optional list of keywords to generate article about
+```
+
+Once a database has been compiled, you can generate articles using a single command. It's important to note that this may take some time - especially if your compiled database is very large, as the database will be read into memory first.
 ```
 python winnie.py generate MY_DATABASE
 ```
 
-### Example
+When generating articles, you may also specify the `-st, --title-state-size` and `-sb, --body-state-size` arguments. These values are used to determine the size of Markov chain nodes. Generally speaking, the higher the number the more 'accurate' generated content will be, however creativity will be reduced. A good value is around 2-3. 2 is the default for article titles, while 3 is the default for article bodies.
 
+Finally, if keyword extraction was enabled when compiling the selected database, you may generate articles which are relevant to a list of given keywords. These keywords can be specified with the `-k, --keywords` argument.
+
+### Example
 Title:
 ```
 China's Hong Kong Airlines risks having license revoked as body parts found
@@ -67,6 +96,8 @@ China's Hong Kong Airlines risks having license revoked as body parts found
 Body:
 ```
 China's so-called "state TV" will divide many Chinese today, experts have said. 
+
+At the end of the epidemic, which in turn has also created vast development opportunities and opposing it for political reasons and Cuba opposes any politicization of virus origins and completed a WHO report from The India Express. The more tricks the DPP authorities shown any sincerity to stop the policy from being kidnapped by the US. On the contrary, the US is relatively small, and the impact of the arrests could be diverse and complicated.
 
 In terms of comprehensive national strength, technology, and many other rights of the trainees and to negate the legitimacy of the Afghan civilian casualties have been reported. Among the athletes, 138 have previous Olympics experience, accounting for 32.02 percent of the cotton and textile industries. Some also worried that Japan is no longer heavily relying on US social media app Musical.ly, which it then merged into TikTok.
 
@@ -77,6 +108,5 @@ In the South China Sea amid her roadshow in Singapore. No matter what the motiva
 
 ## Possibilities
 * It would be cool to produce a proxy website that takes the homepage and/or article pages from the Global Times website, and replaces the content with generated data from this program. It would also be possible to 'tag' phrases and image captions as they are compiled. This would allow images to be selected and used on article pages.
-* As sentences are generated independently, they don't track context or meaning. It would be a great idea to tag nouns/verbs/topics (using spaCy or similar) and use that information when generating sentences.
 
 Pull requests are obviously very welcome!
