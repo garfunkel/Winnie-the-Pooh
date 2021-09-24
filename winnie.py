@@ -59,17 +59,23 @@ class HiddenStdout:
         sys.stdout = self._original_stdout
 
 """
-Class for information relating to the value of a markov link.
+Class for information relating to a Markov chain node.
 """
-class MarkovValue(dict):
+class MarkovNode(dict):
 	def __init__(self, article_id):
 		self.head_count = 0
 		self.tail_count = 0
 		self.article_id = article_id
 
+	"""
+	Increment how many times this Markov node is the head of a phrase.
+	"""
 	def add_head(self):
 		self.head_count += 1
 
+	"""
+	Increment how many times this Markov node is the tail of a phrase.
+	"""
 	def add_tail(self):
 		self.tail_count += 1
 
@@ -199,7 +205,7 @@ class MarkovChain(object):
 					else:
 						value = None
 
-					self.words.setdefault(key, MarkovValue(article_id))
+					self.words.setdefault(key, MarkovNode(article_id))
 
 					if value:
 						self.words[key][value] = self.words[key].get(value, 0) + 1
