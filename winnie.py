@@ -109,7 +109,7 @@ class MarkovChain(object):
 	Generate how many words should exist in a phrase based on the compiled content.
 	"""
 	def generate_num_phrase_words(self):
-		return round(max(1, random.gauss(self.phrase_word_counts_mean, self.phrase_word_counts_std_dev)))
+		return round(max(self.state_size, random.gauss(self.phrase_word_counts_mean, self.phrase_word_counts_std_dev)))
 
 	"""
 	Feed words into a simple stack to determine if all quote marks are valid.
@@ -230,9 +230,8 @@ class MarkovChain(object):
 	min_words and max_words are a guide only. The algorithm may need to alter these values if no result is possible.
 	"""
 	def generate_phrase(self, min_words, max_words):
-		if min_words < self.shortest_phrase:
-			min_words = self.shortest_phrase
-
+		min_words = max(min_words, self.shortest_phrase)
+		min_words = max(min_words, self.state_size)
 		max_words = max(max_words, min_words)
 		phrase = []
 		backtrack_num = 1
