@@ -247,6 +247,7 @@ class MarkovChain(object):
 
 			elif tuple(phrase[-self.state_size :]) not in self.words or not self.words[tuple(phrase[-self.state_size :])] or len(phrase) >= max_words:
 				phrase = phrase[: -backtrack_num]
+				backtrack_num += 1
 
 				continue
 
