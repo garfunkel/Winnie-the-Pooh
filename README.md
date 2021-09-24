@@ -33,7 +33,7 @@ wget \
 	--domains www.globaltimes.cn \
 	--no-parent \
 	--accept-regex=".*s?html?" \
-	-P MY_DOWNLOAD_DIR
+	-P MY_DOWNLOAD_DIR \
 	https://www.globaltimes.cn
 ```
 
