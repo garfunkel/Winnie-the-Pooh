@@ -28,13 +28,13 @@ To generate Global Times articles, first a database must be compiled. An existin
 A database is compiled from a directory containing downloaded Global Times HTML articles. You can download a large proportion of their site using a simple `wget` command:
 ```
 wget \
-	--recursive \
-	--convert-links \
-	--domains www.globaltimes.cn \
-	--no-parent \
-	--accept-regex=".*s?html?" \
-	-P MY_DOWNLOAD_DIR \
-	https://www.globaltimes.cn
+  --recursive \
+  --convert-links \
+  --domains www.globaltimes.cn \
+  --no-parent \
+  --accept-regex=".*s?html?" \
+  -P MY_DOWNLOAD_DIR \
+  https://www.globaltimes.cn
 ```
 
 Let that command run for a few hours. It's best if you hammer their website as hard as you can, obviously. ;)
