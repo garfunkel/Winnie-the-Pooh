@@ -1,5 +1,5 @@
 # Winnie-the-Pooh
-CCP Global Times Article Generator
+CCP Global Times article generator
 
 ## Purpose
 This is what you get when you plug the bullshit from the CCP's Global Times website into a Markov chain to generate equally dumb (but also somehow dramatically more inteligent) articles.
