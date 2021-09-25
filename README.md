@@ -87,7 +87,33 @@ When generating articles, you may also specify the `-st, --title-state-size` and
 
 Finally, if keyword extraction was enabled when compiling the selected database, you may generate articles which are relevant to a list of given keywords. These keywords can be specified with the `-k, --keywords` argument.
 
-### Example
+### Proxy Website
+```
+usage: winnie.py proxy [-h] [-st title-state-size] [-sb body-state-size] [-k [KEYWORDS ...]] [-p PORT] [db]
+
+positional arguments:
+  db                    database to use for generation (default: default)
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -st title-state-size, --title_state_size title-state-size
+                        chain state size for article titles (defualt: 2)
+  -sb body-state-size, --body_state_size body-state-size
+                        chain state size for article bodies (defualt: 3)
+  -k [KEYWORDS ...], --keywords [KEYWORDS ...]
+                        optional list of keywords to generate article about
+  -p PORT, --port PORT  proxy HTTP port (default: 5000)
+
+```
+
+Winnie-the-Pooh includes a web server that proxies the Global Times' website, replacing article titles/summaries/bodies in real-time as you view it. This means that you can effectively have your own Global Times in your pocket ready to go, whenever you need a good laugh.
+
+The options to the `proxy` command mirror those of the `generate` command except for the addition of the `-p, --port` argument, which can be used to bind the server to a custom network port.
+
+![Behold the mentally deranged glory of our own Global Times](proxy.jpg)
+
+
+### Generated Article Example
 Title:
 ```
 China's Hong Kong Airlines risks having license revoked as body parts found
@@ -106,7 +132,5 @@ In the South China Sea amid her roadshow in Singapore. No matter what the motiva
 ...
 ```
 
-## Possibilities
-* It would be cool to produce a proxy website that takes the homepage and/or article pages from the Global Times website, and replaces the content with generated data from this program. It would also be possible to 'tag' phrases and image captions as they are compiled. This would allow images to be selected and used on article pages.
-
+## Contributions
 Pull requests are obviously very welcome!

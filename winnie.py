@@ -7,7 +7,7 @@ import sys, os, re, lzma, statistics, random, math, json
 from argparse import ArgumentParser
 
 # For pulling apart their stupid website.
-from scrapy.selector import Selector
+from bs4 import BeautifulSoup
 
 # For extracting HTML content into text.
 import html2text
@@ -26,9 +26,19 @@ Default name for the database to use when generating articles.
 DEFAULT_DATABASE_NAME = "default"
 
 """
+Default proxy HTTP port.
+"""
+DEFAULT_PROXY_PORT = 5000
+
+"""
 spaCy NLP pipeline wheel filename
 """
 SPACY_NLP_MODEL = "en_core_web_trf"
+
+"""
+URL of a scumbag website.
+"""
+GLOBAL_TIMES_URL = "https://www.globaltimes.cn"
 
 """
 Global regular expressions for various operations.
@@ -359,6 +369,36 @@ def setup_nlp(prefer_gpu = False):
 	return nlp
 
 """
+Read Markov database and return title and body chains.
+"""
+def read_markov_db(db, title_state_size, body_state_size, keywords = {}):
+	title_chain = MarkovChain(title_state_size)
+	body_chain = MarkovChain(body_state_size)
+	database_dir = os.path.join(os.path.dirname(__file__), "databases")
+	num_relevant_articles = 0
+
+	with lzma.open(os.path.join(database_dir, f"{db}.db"), "rt") as handle:
+		for article_id, line in enumerate(handle):
+			data = json.loads(line.strip())
+
+			if match_keywords(keywords, data["keywords"]):
+				num_relevant_articles += 1
+				title_chain.add_text(article_id, data["title_text"], keywords = data["keywords"])
+				body_chain.add_text(article_id, data["body_text"], keywords = data["keywords"])
+
+	if num_relevant_articles == 0:
+		if keywords:
+			raise Exception("No articles related to your keywords could be generated.")
+
+		else:
+			raise Exception("No articles could be generated.")
+
+	title_chain.finish()
+	body_chain.finish()
+
+	return title_chain, body_chain
+
+"""
 Compile a Markov chain database.
 """
 def compile(args):
@@ -385,27 +425,27 @@ def compile(args):
 		for root, _, files in os.walk(args.dir):
 			for path in (os.path.join(root, file) for file in files if RE_VALID_HTML_FILE.search(file)):
 				with open(path) as handle:
-					selector = Selector(text = handle.read(), type = "html")
-					article = selector.css("div.article")
+					soup = BeautifulSoup(handle.read(), "html.parser")
+					article = soup.select("div.article")
 
 					if not article:
 						continue
 
-					title = article.css("div.article_title")
+					title = soup.select("div.article_title")
 
 					if not title:
 						continue
 
-					body = article.css("div.article_content")
+					body = soup.select("div.article_content")
 
 					if not body:
 						continue
 
-					title_text = clean_text(converter.handle(clean_html(title.get()))).strip()
-					body_text = clean_text(converter.handle(clean_html(body.get()))).strip()
+					title_text = clean_text(converter.handle(clean_html(str(title[0])))).strip()
+					body_text = clean_text(converter.handle(clean_html(str(body[0])))).strip()
 					keywords = {}
 
-					if not body_text:
+					if not title_text or not body_text:
 						continue
 
 					if nlp:
@@ -435,41 +475,15 @@ def compile(args):
 	print("Compilation complete.")
 
 """
-Generate a Global Time article from a compiled database.
+Generate a random article from the title and body chains, returning the generated title and body.
 """
-def generate(args):
-	title_chain = MarkovChain(args.title_state_size)
-	body_chain = MarkovChain(args.body_state_size)
-	database_dir = os.path.join(os.path.dirname(__file__), "databases")
-	num_relevant_articles = 0
-
-	with lzma.open(os.path.join(database_dir, f"{args.db}.db"), "rt") as handle:
-		for article_id, line in enumerate(handle):
-			data = json.loads(line.strip())
-
-			if match_keywords(args.keywords, data["keywords"]):
-				num_relevant_articles += 1
-				title_chain.add_text(article_id, data["title_text"], keywords = data["keywords"])
-				body_chain.add_text(article_id, data["body_text"], keywords = data["keywords"])
-
-	if num_relevant_articles == 0:
-		if args.keywords:
-			print("No articles related to your keywords could be generated.", file = sys.stderr)
-
-		else:
-			print("No articles could be generated.", file = sys.stderr)
-
-		return
-
-	title_chain.finish()
-	body_chain.finish()
-
+def generate_article(title_chain, body_chain):
 	num_title_words = title_chain.generate_num_phrase_words()
 	title = " ".join(title_chain.generate_phrase(num_title_words, num_title_words))
-	paragraphs = []
+	body = []
 
 	for _ in range(body_chain.generate_num_paragraphs()):
-		paragraphs.append([])
+		body.append([])
 
 		for _ in range(body_chain.generate_num_paragraph_phrases()):
 			num_phrase_words_min = body_chain.generate_num_phrase_words()
@@ -489,18 +503,234 @@ def generate(args):
 			if not phrase.endswith("."):
 				phrase += "."
 
-			paragraphs[-1].append(phrase)
+			body[-1].append(phrase)
+
+	return title, body
+
+"""
+Generate a Global Time article from a compiled database.
+"""
+def generate(args):
+	print("Reading database...")
+
+	try:
+		title_chain, body_chain = read_markov_db(args.db, args.title_state_size, args.body_state_size, args.keywords)
+
+	except Exception as e:
+		print(e, file = sys.stderr)
+
+		return
+
+	print("Reading complete.")
+
+	title, body = generate_article(title_chain, body_chain)
 
 	print("\u262D " * math.ceil(len(title) / 2))
 	print(title)
 	print("\u262D " * math.ceil(len(title) / 2))
 	print()
 
-	for paragraph in paragraphs[: -1]:
+	for paragraph in body[: -1]:
 		print(" ".join(paragraph))
 		print()
 
-	print(" ".join(paragraphs[-1]))
+	print(" ".join(body[-1]))
+
+"""
+Setup and run a proxy Global Times website which displays generated articles.
+"""
+def proxy(args):
+	from queue import Queue
+	from threading import Thread
+
+	from flask import Flask, request, Response
+	import requests
+
+	print("Reading database...")
+
+	try:
+		title_chain, body_chain = read_markov_db(args.db, args.title_state_size, args.body_state_size, args.keywords)
+
+	except Exception as e:
+		print(e, file = sys.stderr)
+
+		return
+
+	print("Reading complete.")
+
+	app = Flask(__name__)
+	article_buffer = Queue(maxsize = 10000)
+	server_started = False
+
+	"""
+	Return an article title from our queue.
+	"""
+	def _get_generated_title():
+		article = article_buffer.get()
+
+		article_buffer.put_nowait(article)
+
+		return article["title"]
+
+	"""
+	Return an article summary from our queue.
+	"""
+	def _get_generated_summary(num_words, ellipsis = False):
+		article = article_buffer.get()
+		summary = []
+
+		article_buffer.put_nowait(article)
+
+		for paragraph in article["body"]:
+			for phrase in paragraph:
+				summary += phrase.split()
+
+				if len(summary) >= num_words:
+					summary = " ".join(summary[: num_words])
+
+					if ellipsis:
+						summary += " ..."
+
+					return summary
+
+		summary = " ".join(summary)
+
+		if ellipsis:
+			summary += " ..."
+
+		return summary
+
+	"""
+	Return a number of article body paragraphs from our queue.
+	"""
+	def _get_generated_paragraphs(num_paragraphs):
+		paragraphs = []
+
+		while len(paragraphs) < num_paragraphs:
+			article = article_buffer.get()
+
+			article_buffer.put_nowait(article)
+
+			for paragraph in article["body"]:
+				paragraphs.append(" ".join(paragraph))
+
+				if len(paragraphs) >= num_paragraphs:
+					return paragraphs
+
+	"""
+	Replace original HTML with our own.
+	"""
+	def _replace_html(html):
+		soup = BeautifulSoup(html, "html.parser")
+
+		for node in soup.select("a"):
+			if node.has_attr("class") and "new_title_" in " ".join(node["class"]):
+				node.string = _get_generated_title()
+
+			elif node.parent.has_attr("class") and any(x in node.parent["class"] for x in ("most_article", "new_title_s", "mid_title", "common_title")):
+				node.string = _get_generated_title()
+
+			elif node.parent.parent.has_attr("class") and "most_view" in node.parent.parent["class"]:
+				node.string = _get_generated_title()
+
+			if node.has_attr("href"):
+				node["href"] = node["href"].replace(GLOBAL_TIMES_URL, request.host_url.rstrip("/"))
+
+		for node in soup.select("div.article_title"):
+			node.string = _get_generated_title()
+
+		for node in soup.select("p, div.common_desc"):
+			words = (node.string or "").strip().split()
+			num_words = len(words)
+
+			if num_words > 0 and words[-1].endswith("..."):
+				num_words -= 1
+				ellipsis = True
+
+			else:
+				ellipsis = False
+
+			node.string = _get_generated_summary(num_words, ellipsis)
+
+		for node in soup.select("div.article_right"):
+			for child_node in node.children:
+				if child_node.name in ("em", "a"):
+					child_node.extract()
+
+			while True:
+				found = False
+
+				for child_node in node.children:
+					if not child_node.name and child_node.previous_sibling and not child_node.previous_sibling.name:
+						child_node.extract()
+
+						found = True
+
+				if not found:
+					break
+
+			num_paragraphs = 0
+
+			for child_node in node.children:
+				if not child_node.name:
+					num_paragraphs += 1
+
+			paragraphs = _get_generated_paragraphs(num_paragraphs)
+
+			for child_node in node.children:
+				if not child_node.name:
+					child_node.string.replace_with(paragraphs.pop(0))
+
+		return str(soup)
+
+	"""
+	Proxy resources from the Global Times
+	"""
+	def _proxy(*args, **kwargs):
+		print("HERE", request.full_path)
+		new_url = f"{GLOBAL_TIMES_URL}{request.full_path}"
+
+		response = requests.request(
+			method = request.method,
+			url = new_url,
+			headers = {key: value for (key, value) in request.headers if key != "Host"},
+			data = request.get_data(),
+			cookies = request.cookies,
+			allow_redirects = False)
+
+		if response.headers.get('content-type') == "text/html":
+			body = _replace_html(response.text)
+
+		else:
+			body = response.content
+
+		excluded_headers = ["content-encoding", "content-length", "transfer-encoding", "connection"]
+		headers = [(name, value) for (name, value) in response.raw.headers.items() if name.lower() not in excluded_headers]
+
+		return Response(body, response.status_code, headers)
+
+	"""
+	Serve any URL to the proxy.
+	"""
+	@app.errorhandler(404)
+	def other(error):
+		return _proxy()
+
+	"""
+	Generate articles over time and place them in our article queue.
+	"""
+	while True:
+		title, body = generate_article(title_chain, body_chain)
+
+		article_buffer.put({
+			"title": title,
+			"body": body
+		})
+
+		if not server_started:
+			Thread(target = app.run, kwargs = {"debug": False, "port": args.port}, daemon = True).start()
+
+			server_started = True
 
 def main():
 	parser = ArgumentParser(description = __doc__)
@@ -519,6 +749,14 @@ def main():
 	generate_parser.add_argument("-sb", "--body_state_size", metavar = "body-state-size", type = int, default = DEFAULT_MARKOV_BODY_STATE_SIZE, help = f"chain state size for article bodies (defualt: {DEFAULT_MARKOV_BODY_STATE_SIZE})")
 	generate_parser.add_argument("-k", "--keywords", nargs = "*", help = "optional list of keywords to generate article about")
 	generate_parser.set_defaults(func = generate)
+
+	proxy_parser = sub_parser.add_parser("proxy", help = "start a proxy website serving Global Times articles")
+	proxy_parser.add_argument("db", nargs = "?", default = DEFAULT_DATABASE_NAME, help = f"database to use for generation (default: {DEFAULT_DATABASE_NAME})")
+	proxy_parser.add_argument("-st", "--title_state_size", metavar = "title-state-size", type = int, default = DEFAULT_MARKOV_TITLE_STATE_SIZE, help = f"chain state size for article titles (defualt: {DEFAULT_MARKOV_TITLE_STATE_SIZE})")
+	proxy_parser.add_argument("-sb", "--body_state_size", metavar = "body-state-size", type = int, default = DEFAULT_MARKOV_BODY_STATE_SIZE, help = f"chain state size for article bodies (defualt: {DEFAULT_MARKOV_BODY_STATE_SIZE})")
+	proxy_parser.add_argument("-k", "--keywords", nargs = "*", help = "optional list of keywords to generate article about")
+	proxy_parser.add_argument("-p", "--port", type = int, default = DEFAULT_PROXY_PORT, help = f"proxy HTTP port (default: {DEFAULT_PROXY_PORT})")
+	proxy_parser.set_defaults(func = proxy)
 
 	args = parser.parse_args()
 

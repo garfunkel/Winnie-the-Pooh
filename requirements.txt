@@ -1,3 +1,5 @@
 html2text
-scrapy
 spacy
+flask
+requests
+bs4
