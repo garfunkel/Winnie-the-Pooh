@@ -641,16 +641,7 @@ def proxy(args):
 
 		for node in soup.select("p, div.common_desc"):
 			words = (node.string or "").strip().split()
-			num_words = len(words)
-
-			if num_words > 0 and words[-1].endswith("..."):
-				num_words -= 1
-				ellipsis = True
-
-			else:
-				ellipsis = False
-
-			node.string = _get_generated_summary(num_words, ellipsis)
+			node.string = _get_generated_summary(len(words), True)
 
 		for node in soup.select("div.article_right"):
 			for child_node in node.children:
