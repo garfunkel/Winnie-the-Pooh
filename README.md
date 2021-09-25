@@ -1,4 +1,4 @@
-# nonsense
+# Winnie-the-Pooh
 CCP Global Times Article Generator
 
 ## Purpose
@@ -9,14 +9,15 @@ This came about because I wanted to see how hilarious machine generated articles
 ## Usage
 ### General usage information:
 ```
-usage: winnie.py [-h] {compile,generate} ...
+usage: winnie.py [-h] {compile,generate,proxy} ...
 
 Generates articles in the style of the CCP's hilarious Global Times website.
 
 positional arguments:
-  {compile,generate}
+  {compile,generate,proxy}
     compile           compile website HTML data from given directory
     generate          generate article
+    proxy             start a proxy website serving Global Times articles
 
 optional arguments:
   -h, --help          show this help message and exit
