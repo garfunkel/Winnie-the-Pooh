@@ -687,7 +687,6 @@ def proxy(args):
 	Proxy resources from the Global Times
 	"""
 	def _proxy(*args, **kwargs):
-		print("HERE", request.full_path)
 		new_url = f"{GLOBAL_TIMES_URL}{request.full_path}"
 
 		response = requests.request(
