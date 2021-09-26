@@ -725,6 +725,9 @@ def proxy(args):
 
 		return Response(body, response.status_code, headers)
 
+	"""
+	API route for adding an article into rotation.
+	"""
 	@app.route(API_POST_ARTICLE, methods = ["POST"])
 	def api_add_article():
 		article = request.json
