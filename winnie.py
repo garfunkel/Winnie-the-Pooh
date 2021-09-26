@@ -724,7 +724,7 @@ def proxy(args):
 
 def main():
 	parser = ArgumentParser(description = __doc__)
-	sub_parser = parser.add_subparsers()
+	sub_parser = parser.add_subparsers(metavar = "{compile,generate,proxy}", dest = "cmd", required = True)
 
 	compile_parser = sub_parser.add_parser("compile", help = "compile website HTML data from given directory")
 	compile_parser.add_argument("dir", help = "website HTML directory to compile")
