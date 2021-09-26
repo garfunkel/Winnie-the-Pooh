@@ -127,7 +127,6 @@ Finally, the `-a, --api-only` argument can be used to disable reading of compile
 
 ![Behold the mentally deranged glory of our own Global Times](proxy.jpg)
 
-
 ### Generated Article Example
 Title:
 ```
