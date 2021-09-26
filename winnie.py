@@ -38,8 +38,9 @@ Default number of articles to generate.
 DEFAULT_NUM_GENERATE = 1
 
 """
-Default proxy HTTP port.
+Default proxy HTTP host/port.
 """
+DEFAULT_PROXY_HOST = "localhost"
 DEFAULT_PROXY_PORT = 5000
 
 """
@@ -760,7 +761,7 @@ def proxy(args):
 				server_started = True
 
 	else:
-		app.run(debug = False, port = args.port)
+		app.run(debug = False, host = args.host, port = args.port)
 
 def main():
 	parser = ArgumentParser(description = __doc__)
@@ -787,6 +788,7 @@ def main():
 	proxy_parser.add_argument("-st", "--title_state_size", type = int, default = DEFAULT_MARKOV_TITLE_STATE_SIZE, help = f"chain state size for article titles (defualt: {DEFAULT_MARKOV_TITLE_STATE_SIZE})")
 	proxy_parser.add_argument("-sb", "--body_state_size", type = int, default = DEFAULT_MARKOV_BODY_STATE_SIZE, help = f"chain state size for article bodies (defualt: {DEFAULT_MARKOV_BODY_STATE_SIZE})")
 	proxy_parser.add_argument("-k", "--keywords", nargs = "*", default = [], help = "optional list of keywords to generate article about")
+	proxy_parser.add_argument("-H", "--host", default = DEFAULT_PROXY_HOST, help = f"proxy HTTP host (default: {DEFAULT_PROXY_HOST})")
 	proxy_parser.add_argument("-p", "--port", type = int, default = DEFAULT_PROXY_PORT, help = f"proxy HTTP port (default: {DEFAULT_PROXY_PORT})")
 	proxy_parser.add_argument("-a", "--api-only", action = "store_true", help = "ignore database and do not generate articles - rely on API for articles to be added")
 	proxy_parser.set_defaults(func = proxy)

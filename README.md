@@ -119,9 +119,7 @@ optional arguments:
 
 Winnie-the-Pooh includes a web server that proxies the Global Times' website, replacing article titles/summaries/bodies in real-time as you view it. This means that you can effectively have your own Global Times in your pocket ready to go, whenever you need a good laugh.
 
-The options to the `proxy` command mirror those of the `generate` command except for the addition of the `-p, --port` and `-a, --api-only` arguments.
-
-The `-p, --port` argument can be used to bind the server to a custom network port.
+The `-H, --host` argument can be used to set the host IP address. Meanwhile, the `-p, --port` argument can be used to bind the server to a custom network port.
 
 Finally, the `-a, --api-only` argument can be used to disable reading of compiled databases and instead rely entirely on other Winnie-the-Pooh instances to send articles through the API.
 
