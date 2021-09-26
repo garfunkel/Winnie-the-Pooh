@@ -570,10 +570,15 @@ def generate(args):
 			if not RE_VALID_HOST.match(host):
 				host = "http://" + host
 
-			requests.post(f"{host.rstrip('/')}{API_POST_ARTICLE}", json = {
+			data = {
 				"title": title,
-				"body": body
-			})
+				"body": body,
+			}
+
+			if args.api_key:
+				data["api_key"] = args.api_key
+
+			requests.post(f"{host.rstrip('/')}{API_POST_ARTICLE}", json = data)
 
 """
 Setup and run a proxy Global Times website which displays generated articles.
@@ -666,7 +671,7 @@ def proxy(args):
 
 		for node in soup.select("div.article_right"):
 			for child_node in node.children:
-				if child_node.name in ("em", "a"):
+				if child_node.name in ("em", "a", "strong", "span"):
 					child_node.extract()
 
 			while True:
@@ -722,7 +727,13 @@ def proxy(args):
 
 	@app.route(API_POST_ARTICLE, methods = ["POST"])
 	def api_add_article():
-		article_buffer.put(request.json)
+		article = request.json
+
+		if not args.api_key or article["api_key"] == args.api_key:
+			article_buffer.put({
+				"title": article["title"],
+				"body": article["body"]
+			})
 
 		return Response(status = 200)
 
@@ -781,6 +792,7 @@ def main():
 	generate_parser.add_argument("-k", "--keywords", nargs = "*", default = [], help = "optional list of keywords to generate article about")
 	generate_parser.add_argument("-n", "--number", type = int, default = DEFAULT_NUM_GENERATE, help = f"number of articles to generate, or 0 for infinite (default: {DEFAULT_NUM_GENERATE})")
 	generate_parser.add_argument("-a", "--api-post", nargs = "*", default = [], metavar = "HOST", help = "send articles to proxy host(s) via a HTTP POST API call")
+	generate_parser.add_argument("-K", "--api-key", help = "API key for when sending articles to proxy host(s)")
 	generate_parser.set_defaults(func = generate)
 
 	proxy_parser = sub_parser.add_parser("proxy", help = "start a proxy website serving Global Times articles")
@@ -791,6 +803,7 @@ def main():
 	proxy_parser.add_argument("-H", "--host", default = DEFAULT_PROXY_HOST, help = f"proxy HTTP host (default: {DEFAULT_PROXY_HOST})")
 	proxy_parser.add_argument("-p", "--port", type = int, default = DEFAULT_PROXY_PORT, help = f"proxy HTTP port (default: {DEFAULT_PROXY_PORT})")
 	proxy_parser.add_argument("-a", "--api-only", action = "store_true", help = "ignore database and do not generate articles - rely on API for articles to be added")
+	proxy_parser.add_argument("-K", "--api-key", help = "API key for when receiving articles from generators")
 	proxy_parser.set_defaults(func = proxy)
 
 	args = parser.parse_args()

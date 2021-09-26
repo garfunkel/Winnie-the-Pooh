@@ -65,7 +65,7 @@ Winnie-the-Pooh supports keyword extraction via the spaCy NLP library. This allo
 ### Generating Articles
 ```
 usage: winnie.py generate [-h] [-st TITLE_STATE_SIZE] [-sb BODY_STATE_SIZE] [-k [KEYWORDS ...]] [-n NUMBER]
-                          [-a [HOST ...]]
+                          [-a [HOST ...]] [-K API_KEY]
                           [db]
 
 positional arguments:
@@ -83,6 +83,8 @@ optional arguments:
                         number of articles to generate, or 0 for infinite (default: 1)
   -a [HOST ...], --api-post [HOST ...]
                         send articles to proxy host(s) via a HTTP POST API call
+  -K API_KEY, --api-key API_KEY
+                        API key for when sending articles to proxy host(s)
 ```
 
 Once a database has been compiled, you can generate articles using a single command. It's important to note that this may take some time - especially if your compiled database is very large, as the database will be read into memory first.
@@ -96,11 +98,13 @@ If keyword extraction was enabled when compiling the selected database, you may 
 
 You can generate any number of articles by using the `-n, --number` argument. By specifying 0, an infinite number of articles will be generated.
 
-Finally, you may also send generated articles to other Winnie-the-Pooh instance running in proxy mode by specifying host URLs to the `-a, --api-post` argument. Every time an article has been generated, a call will be made to each of the hosts specified, adding the article for the users of the proxy to enjoy.
+Finally, you may also send generated articles to other Winnie-the-Pooh instance running in proxy mode by specifying host URLs to the `-a, --api-post` argument. Every time an article has been generated, a call will be made to each of the hosts specified, adding the article for the users of the proxy to enjoy. When using this feature, you may also specify the `-K, --api-key` argument to set a key used for authentication.
 
 ### Proxy Website
 ```
-usage: winnie.py proxy [-h] [-st TITLE_STATE_SIZE] [-sb BODY_STATE_SIZE] [-k [KEYWORDS ...]] [-p PORT] [-a] [db]
+usage: winnie.py proxy [-h] [-st TITLE_STATE_SIZE] [-sb BODY_STATE_SIZE] [-k [KEYWORDS ...]] [-H HOST] [-p PORT] [-a]
+                       [-K API_KEY]
+                       [db]
 
 positional arguments:
   db                    database to use for generation (default: default)
@@ -113,15 +117,20 @@ optional arguments:
                         chain state size for article bodies (defualt: 3)
   -k [KEYWORDS ...], --keywords [KEYWORDS ...]
                         optional list of keywords to generate article about
+  -H HOST, --host HOST  proxy HTTP host (default: localhost)
   -p PORT, --port PORT  proxy HTTP port (default: 5000)
   -a, --api-only        ignore database and do not generate articles - rely on API for articles to be added
+  -K API_KEY, --api-key API_KEY
+                        API key for when receiving articles from generators
 ```
 
 Winnie-the-Pooh includes a web server that proxies the Global Times' website, replacing article titles/summaries/bodies in real-time as you view it. This means that you can effectively have your own Global Times in your pocket ready to go, whenever you need a good laugh.
 
 The `-H, --host` argument can be used to set the host IP address. Meanwhile, the `-p, --port` argument can be used to bind the server to a custom network port.
 
-Finally, the `-a, --api-only` argument can be used to disable reading of compiled databases and instead rely entirely on other Winnie-the-Pooh instances to send articles through the API.
+The `-a, --api-only` argument can be used to disable reading of compiled databases and instead rely entirely on other Winnie-the-Pooh instances to send articles through the API.
+
+Finally, the `-K, --api-key` argument may also be used to set the authentication key for the proxy website.
 
 ![Behold the mentally deranged glory of our own Global Times](proxy.jpg)
 
