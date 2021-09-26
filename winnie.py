@@ -5,12 +5,19 @@ Generates articles in the style of the CCP's hilarious Global Times website.
 """
 import sys, os, re, lzma, statistics, random, math, json
 from argparse import ArgumentParser
+from itertools import count
+from queue import Queue
+from threading import Thread
 
 # For pulling apart their stupid website.
 from bs4 import BeautifulSoup
 
 # For extracting HTML content into text.
 import html2text
+
+# For proxy website and API.
+from flask import Flask, request, Response
+import requests
 
 """
 Default for phrase state size.
@@ -24,6 +31,11 @@ DEFAULT_MARKOV_BODY_STATE_SIZE = 3
 Default name for the database to use when generating articles.
 """
 DEFAULT_DATABASE_NAME = "default"
+
+"""
+Default number of articles to generate.
+"""
+DEFAULT_NUM_GENERATE = 1
 
 """
 Default proxy HTTP port.
@@ -41,8 +53,14 @@ URL of a scumbag website.
 GLOBAL_TIMES_URL = "https://www.globaltimes.cn"
 
 """
+JSON API route for POSTing an article.
+"""
+API_POST_ARTICLE = "/api/article"
+
+"""
 Global regular expressions for various operations.
 """
+RE_VALID_HOST = re.compile(r"^https?://")
 RE_VALID_HTML_FILE = re.compile(r".*\.s?html?")
 RE_PARAGRAPH_SPLIT = re.compile(r"\s*\n\s*\n\s*")
 RE_PHRASE_SPLIT = re.compile(r"(?<=[^A-Z].[.?!]) +(?=[A-Z])")
@@ -523,41 +541,43 @@ def generate(args):
 
 	print("Reading complete.")
 
-	title, body = generate_article(title_chain, body_chain)
+	if args.number == 0:
+		predicate = count()
 
-	print("\u262D " * math.ceil(len(title) / 2))
-	print(title)
-	print("\u262D " * math.ceil(len(title) / 2))
-	print()
+	else:
+		predicate = range(args.number)
 
-	for paragraph in body[: -1]:
-		print(" ".join(paragraph))
+	for index in predicate:
+		title, body = generate_article(title_chain, body_chain)
+
+		if args.number == 0 or index < args.number:
+			print()
+			print()
+
+		print("\u262D " * math.ceil(len(title) / 2))
+		print(title)
+		print("\u262D " * math.ceil(len(title) / 2))
 		print()
 
-	print(" ".join(body[-1]))
+		for paragraph in body[: -1]:
+			print(" ".join(paragraph))
+			print()
+
+		print(" ".join(body[-1]))
+
+		for host in args.api_post:
+			if not RE_VALID_HOST.match(host):
+				host = "http://" + host
+
+			requests.post(f"{host.rstrip('/')}{API_POST_ARTICLE}", json = {
+				"title": title,
+				"body": body
+			})
 
 """
 Setup and run a proxy Global Times website which displays generated articles.
 """
 def proxy(args):
-	from queue import Queue
-	from threading import Thread
-
-	from flask import Flask, request, Response
-	import requests
-
-	print("Reading database...")
-
-	try:
-		title_chain, body_chain = read_markov_db(args.db, args.title_state_size, args.body_state_size, args.keywords)
-
-	except Exception as e:
-		print(e, file = sys.stderr)
-
-		return
-
-	print("Reading complete.")
-
 	app = Flask(__name__)
 	article_buffer = Queue(maxsize = 10000)
 	server_started = False
@@ -699,6 +719,12 @@ def proxy(args):
 
 		return Response(body, response.status_code, headers)
 
+	@app.route(API_POST_ARTICLE, methods = ["POST"])
+	def api_add_article():
+		article_buffer.put(request.json)
+
+		return Response(status = 200)
+
 	"""
 	Serve any URL to the proxy.
 	"""
@@ -706,21 +732,35 @@ def proxy(args):
 	def other(error):
 		return _proxy()
 
-	"""
-	Generate articles over time and place them in our article queue.
-	"""
-	while True:
-		title, body = generate_article(title_chain, body_chain)
+	if not args.api_only:
+		print("Reading database...")
 
-		article_buffer.put({
-			"title": title,
-			"body": body
-		})
+		try:
+			title_chain, body_chain = read_markov_db(args.db, args.title_state_size, args.body_state_size, args.keywords)
 
-		if not server_started:
-			Thread(target = app.run, kwargs = {"debug": False, "port": args.port}, daemon = True).start()
+		except Exception as e:
+			print(e, file = sys.stderr)
 
-			server_started = True
+			return
+
+		print("Reading complete.")
+
+		# Generate articles over time and place them in our article queue.
+		while True:
+			title, body = generate_article(title_chain, body_chain)
+
+			article_buffer.put({
+				"title": title,
+				"body": body
+			})
+
+			if not server_started:
+				Thread(target = app.run, kwargs = {"debug": False, "port": args.port}, daemon = True).start()
+
+				server_started = True
+
+	else:
+		app.run(debug = False, port = args.port)
 
 def main():
 	parser = ArgumentParser(description = __doc__)
@@ -735,17 +775,20 @@ def main():
 
 	generate_parser = sub_parser.add_parser("generate", help = "generate article")
 	generate_parser.add_argument("db", nargs = "?", default = DEFAULT_DATABASE_NAME, help = f"database to use for generation (default: {DEFAULT_DATABASE_NAME})")
-	generate_parser.add_argument("-st", "--title_state_size", metavar = "title-state-size", type = int, default = DEFAULT_MARKOV_TITLE_STATE_SIZE, help = f"chain state size for article titles (defualt: {DEFAULT_MARKOV_TITLE_STATE_SIZE})")
-	generate_parser.add_argument("-sb", "--body_state_size", metavar = "body-state-size", type = int, default = DEFAULT_MARKOV_BODY_STATE_SIZE, help = f"chain state size for article bodies (defualt: {DEFAULT_MARKOV_BODY_STATE_SIZE})")
-	generate_parser.add_argument("-k", "--keywords", nargs = "*", help = "optional list of keywords to generate article about")
+	generate_parser.add_argument("-st", "--title_state_size", type = int, default = DEFAULT_MARKOV_TITLE_STATE_SIZE, help = f"chain state size for article titles (defualt: {DEFAULT_MARKOV_TITLE_STATE_SIZE})")
+	generate_parser.add_argument("-sb", "--body_state_size", type = int, default = DEFAULT_MARKOV_BODY_STATE_SIZE, help = f"chain state size for article bodies (defualt: {DEFAULT_MARKOV_BODY_STATE_SIZE})")
+	generate_parser.add_argument("-k", "--keywords", nargs = "*", default = [], help = "optional list of keywords to generate article about")
+	generate_parser.add_argument("-n", "--number", type = int, default = DEFAULT_NUM_GENERATE, help = f"number of articles to generate, or 0 for infinite (default: {DEFAULT_NUM_GENERATE})")
+	generate_parser.add_argument("-a", "--api-post", nargs = "*", default = [], metavar = "HOST", help = "send articles to proxy host(s) via a HTTP POST API call")
 	generate_parser.set_defaults(func = generate)
 
 	proxy_parser = sub_parser.add_parser("proxy", help = "start a proxy website serving Global Times articles")
 	proxy_parser.add_argument("db", nargs = "?", default = DEFAULT_DATABASE_NAME, help = f"database to use for generation (default: {DEFAULT_DATABASE_NAME})")
-	proxy_parser.add_argument("-st", "--title_state_size", metavar = "title-state-size", type = int, default = DEFAULT_MARKOV_TITLE_STATE_SIZE, help = f"chain state size for article titles (defualt: {DEFAULT_MARKOV_TITLE_STATE_SIZE})")
-	proxy_parser.add_argument("-sb", "--body_state_size", metavar = "body-state-size", type = int, default = DEFAULT_MARKOV_BODY_STATE_SIZE, help = f"chain state size for article bodies (defualt: {DEFAULT_MARKOV_BODY_STATE_SIZE})")
-	proxy_parser.add_argument("-k", "--keywords", nargs = "*", help = "optional list of keywords to generate article about")
+	proxy_parser.add_argument("-st", "--title_state_size", type = int, default = DEFAULT_MARKOV_TITLE_STATE_SIZE, help = f"chain state size for article titles (defualt: {DEFAULT_MARKOV_TITLE_STATE_SIZE})")
+	proxy_parser.add_argument("-sb", "--body_state_size", type = int, default = DEFAULT_MARKOV_BODY_STATE_SIZE, help = f"chain state size for article bodies (defualt: {DEFAULT_MARKOV_BODY_STATE_SIZE})")
+	proxy_parser.add_argument("-k", "--keywords", nargs = "*", default = [], help = "optional list of keywords to generate article about")
 	proxy_parser.add_argument("-p", "--port", type = int, default = DEFAULT_PROXY_PORT, help = f"proxy HTTP port (default: {DEFAULT_PROXY_PORT})")
+	proxy_parser.add_argument("-a", "--api-only", action = "store_true", help = "ignore database and do not generate articles - rely on API for articles to be added")
 	proxy_parser.set_defaults(func = proxy)
 
 	args = parser.parse_args()
