@@ -1,5 +1,6 @@
 html2text
 spacy
 flask
+flask_talisman
 requests
 bs4

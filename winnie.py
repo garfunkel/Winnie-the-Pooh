@@ -17,6 +17,7 @@ import html2text
 
 # For proxy website and API.
 from flask import Flask, request, Response
+from flask_talisman import Talisman
 import requests
 
 """
@@ -587,6 +588,12 @@ def proxy(args):
 	app = Flask(__name__)
 	article_buffer = Queue(maxsize = 10000)
 	server_started = False
+	ssl_context = None
+
+	if args.ssl_cert and args.ssl_private_key:
+		Talisman(app)
+
+		ssl_context = (args.ssl_cert, args.ssl_private_key)
 
 	"""
 	Return an article title from our queue.
@@ -770,12 +777,12 @@ def proxy(args):
 			})
 
 			if not server_started:
-				Thread(target = app.run, kwargs = {"debug": False, "port": args.port}, daemon = True).start()
+				Thread(target = app.run, kwargs = {"debug": False, "port": args.port, "ssl_context": ssl_context}, daemon = True).start()
 
 				server_started = True
 
 	else:
-		app.run(debug = False, host = args.host, port = args.port)
+		app.run(debug = False, host = args.host, port = args.port, ssl_context = ssl_context)
 
 def main():
 	parser = ArgumentParser(description = __doc__)
@@ -805,6 +812,8 @@ def main():
 	proxy_parser.add_argument("-k", "--keywords", nargs = "*", default = [], help = "optional list of keywords to generate article about")
 	proxy_parser.add_argument("-H", "--host", default = DEFAULT_PROXY_HOST, help = f"proxy HTTP host (default: {DEFAULT_PROXY_HOST})")
 	proxy_parser.add_argument("-p", "--port", type = int, default = DEFAULT_PROXY_PORT, help = f"proxy HTTP port (default: {DEFAULT_PROXY_PORT})")
+	proxy_parser.add_argument("-c", "--ssl-cert", help = "SSL certificate for HTTPS")
+	proxy_parser.add_argument("-P", "--ssl-private-key", help = "SSL private key for HTTPS")
 	proxy_parser.add_argument("-a", "--api-only", action = "store_true", help = "ignore database and do not generate articles - rely on API for articles to be added")
 	proxy_parser.add_argument("-K", "--api-key", help = "API key for when receiving articles from generators")
 	proxy_parser.set_defaults(func = proxy)

@@ -102,8 +102,8 @@ Finally, you may also send generated articles to other Winnie-the-Pooh instance 
 
 ### Proxy Website
 ```
-usage: winnie.py proxy [-h] [-st TITLE_STATE_SIZE] [-sb BODY_STATE_SIZE] [-k [KEYWORDS ...]] [-H HOST] [-p PORT] [-a]
-                       [-K API_KEY]
+usage: winnie.py proxy [-h] [-st TITLE_STATE_SIZE] [-sb BODY_STATE_SIZE] [-k [KEYWORDS ...]] [-H HOST] [-p PORT]
+                       [-c SSL_CERT] [-P SSL_PRIVATE_KEY] [-a] [-K API_KEY]
                        [db]
 
 positional arguments:
@@ -119,6 +119,10 @@ optional arguments:
                         optional list of keywords to generate article about
   -H HOST, --host HOST  proxy HTTP host (default: localhost)
   -p PORT, --port PORT  proxy HTTP port (default: 5000)
+  -c SSL_CERT, --ssl-cert SSL_CERT
+                        SSL certificate for HTTPS
+  -P SSL_PRIVATE_KEY, --ssl-private-key SSL_PRIVATE_KEY
+                        SSL private key for HTTPS
   -a, --api-only        ignore database and do not generate articles - rely on API for articles to be added
   -K API_KEY, --api-key API_KEY
                         API key for when receiving articles from generators
@@ -127,6 +131,8 @@ optional arguments:
 Winnie-the-Pooh includes a web server that proxies the Global Times' website, replacing article titles/summaries/bodies in real-time as you view it. This means that you can effectively have your own Global Times in your pocket ready to go, whenever you need a good laugh.
 
 The `-H, --host` argument can be used to set the host IP address. Meanwhile, the `-p, --port` argument can be used to bind the server to a custom network port.
+
+Additionally, you may enable HTTPS support by setting both the `-c, --ssl-cert` and `-P, --ssl-private-key` arguments. When these two are set, all HTTP clients will be forced to connect via HTTPS.
 
 The `-a, --api-only` argument can be used to disable reading of compiled databases and instead rely entirely on other Winnie-the-Pooh instances to send articles through the API.
 
