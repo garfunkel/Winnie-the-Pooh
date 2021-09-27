@@ -591,7 +591,7 @@ def proxy(args):
 	ssl_context = None
 
 	if args.ssl_cert and args.ssl_private_key:
-		Talisman(app)
+		Talisman(app, content_security_policy = None)
 
 		ssl_context = (args.ssl_cert, args.ssl_private_key)
 
